@@ -1,4 +1,5 @@
 // ESP32 + 74HC595 + LDR -> controle de brilho via OE PWM (active LOW)
+#include <Arduino.h>
 
 #define PIN_DATA   23   // SER / DS
 #define PIN_CLOCK  18   // SRCLK
@@ -77,8 +78,8 @@ void loop() {
   // mapa invertido: raw grande (muita luz) -> duty baixo (LED off)
   // vamos mapear raw [min..max] para duty [MAX_DUTY..0]
   // primeiro calibra min/max:
-  const int MIN_RAW = 0;    // ajustar se quiser, ou medir em ambiente escuro
-  const int MAX_RAW = 3000; // ajustar medindo em muita luz; 4095 pode saturar
+  const int MIN_RAW = 5;    //medir em ambiente escuro
+  const int MAX_RAW = 1000; // ajustar medindo em muita luz; 1000 pode saturar
   int clipped = raw;
   if (clipped < MIN_RAW) clipped = MIN_RAW;
   if (clipped > MAX_RAW) clipped = MAX_RAW;
@@ -87,22 +88,12 @@ void loop() {
   float norm = float(clipped - MIN_RAW) / float(MAX_RAW - MIN_RAW); // 0..1
   // norm=0 -> escuro ; norm=1 -> muita luz
   int duty = (int)((1.0 - norm) * MAX_DUTY + 0.5); // inverso
-
-  // opcional: aplicar limiares discretos (faixas)
-  // por exemplo:
-  // if (norm < 0.15) duty = MAX_DUTY;     // noite -> full
-  // else if (norm < 0.6) duty = MAX_DUTY/3; // meio -> limiar
-  // else duty = 0; // muito claro -> off
-
-  // escreve no OE (lembra: OE é active low -> 0 habilita)
-  // nesse esquema, duty 255 -> OE PWM=255 -> HIGH -> disabled, por isso invertemos já
-  // mas estamos escrevendo duty tal que 255 -> bright, e OE active low needs invert:
-  // simpler: we already computed duty as brightness; convert to OE duty = MAX_DUTY - brightness
   int oeDuty = MAX_DUTY - duty;
   ledcWrite(PWM_CH, oeDuty);
 
   // debug
   Serial.printf("raw=%d norm=%.2f duty=%d oeDuty=%d\n", raw, norm, duty, oeDuty);
+  Serial.println(raw);
+  delay(200);
 
-  delay(120);
 }
